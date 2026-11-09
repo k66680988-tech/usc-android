@@ -1080,18 +1080,20 @@ static bool TryExtract()
 	catch (const std::exception& e)
 	{
 		Logf("Asset extraction failed: %s", Logger::Severity::Error, e.what());
+		SDL_AndroidShowToast(*Utility::Sprintf("Asset extraction failed: %s", e.what()), 10000, -1, 0, 0);
 		return false;
 	}
 }
 
 bool ExtractAndroidAssets() {
-	bool assetDirs = Path::IsDirectory(String("/sdcard/.usc"));
+	Path::gameDir = "/sdcard";
+	// FIX(android16): check for actual content (skins), not just the .usc dir;
+	// a previous failed run can leave an empty .usc behind.
+	bool assetDirs = Path::IsDirectory(String("/sdcard/.usc/skins"));
 	if (!assetDirs)
 	{ //no game files, try to extract from apk assets.
-		Path::gameDir = "/sdcard";
-		if (Path::CreateDir(String("/sdcard/.usc")))
+		if (Path::CreateDir(String("/sdcard/.usc")) || Path::IsDirectory(String("/sdcard/.usc")))
 		{
-			// FIX(android16): probe writability by creating the .usc dir first.
 			Log("Extracting game assets to /sdcard/.usc");
 			if (!TryExtract())
 				return false;
@@ -1114,9 +1116,16 @@ bool ExtractAndroidAssets() {
 			if (!TryExtract())
 				return false;
 		}
-		assetDirs = Path::IsDirectory(Path::gameDir + "/.usc");
+		assetDirs = Path::IsDirectory(Path::gameDir + "/.usc/skins");
 	}
-	return assetDirs;
+	if (!assetDirs)
+		return false;
+	// FIX(android16): the game loads skins/charts/settings relative to
+	// Path::gameDir, but all assets live inside the .usc directory
+	// (upstream issue #10: "shader not found"). Point gameDir at it.
+	Path::gameDir = Path::gameDir + "/.usc";
+	Logf("Game data directory: %s", Logger::Severity::Info, Path::gameDir.c_str());
+	return true;
 }
 
 
