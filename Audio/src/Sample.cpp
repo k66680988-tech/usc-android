@@ -63,7 +63,12 @@ public:
 		result = ma_decode_file(*path, &config, &m_length, (void **)&m_pcm);
 
 		if (result != MA_SUCCESS)
+		{
+			// FIX(android): temporary diagnostics - log the exact path, sample
+			// rate and miniaudio result code so failures are debuggable.
+			Logf("Sample decode FAILED: path='%s' rate=%u ma_result=%d", Logger::Severity::Error, *path, targetRate, (int)result);
 			return false;
+		}
 
 		return true;
 	}
