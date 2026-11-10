@@ -97,7 +97,21 @@ public:
 	}
 	bool Init()
 	{
-		OpenDevice(nullptr);
+		if (!OpenDevice(nullptr))
+		{
+			// FIX(android): retry with the OpenSL ES driver explicitly, then keep
+			// the game running (silent) with a fallback spec instead of leaving
+			// the sample rate at 0, which breaks all sample decoding.
+			SDL_SetHint("SDL_AUDIODRIVER", "openslES");
+			SDL_QuitSubSystem(SDL_INIT_AUDIO);
+			SDL_InitSubSystem(SDL_INIT_AUDIO);
+			if (!OpenDevice(nullptr))
+			{
+				Log("Audio device unavailable, continuing without sound", Logger::Severity::Error);
+				m_audioSpec.freq = 44100;
+				m_audioSpec.channels = 2;
+			}
+		}
 		return true;
 	}
 	static void SDLCALL FillBuffer(AudioOutput_Impl* self, float* data, int len)

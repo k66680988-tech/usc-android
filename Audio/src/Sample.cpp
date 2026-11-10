@@ -51,8 +51,14 @@ public:
 	}
 	bool Init(const String &path)
 	{
-
-		ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 2, g_audio->GetSampleRate());
+		// FIX(android): if the audio device failed to open, GetSampleRate()
+		// returns 0 and miniaudio rejects the decode config, which made every
+		// sample load fail (Lua error "Failed to load sample ..."). Fall back
+		// to 44.1kHz so samples still load.
+		uint32 targetRate = g_audio->GetSampleRate();
+		if (targetRate == 0)
+			targetRate = 44100;
+		ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 2, targetRate);
 		ma_result result;
 		result = ma_decode_file(*path, &config, &m_length, (void **)&m_pcm);
 
